@@ -157,6 +157,7 @@ export async function syncLocationToNativeWidget(loc: any) {
     localStorage.setItem(STORAGE_KEYS.LAST_LOCATION, jsonStr);
     try {
       await Preferences.set({ key: 'bontot_selected_location', value: jsonStr });
+      await Preferences.set({ key: 'selected_location', value: jsonStr });
     } catch {
       // Non-blocking di lingkungan browser murni / testing
     }

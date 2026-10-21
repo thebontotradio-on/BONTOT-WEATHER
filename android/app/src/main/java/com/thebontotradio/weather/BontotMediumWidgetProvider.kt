@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * AppWidgetProvider untuk Widget Medium (4x2) BONTOT WEATHER.
  * Menggunakan goAsync() untuk menjamin request selesai meskipun proses di-background-kan Android.
+ * Anti-Fake Data: Tidak pernah menampilkan data buatan jika gagal.
  */
 class BontotMediumWidgetProvider : AppWidgetProvider() {
 
@@ -75,7 +76,17 @@ class BontotMediumWidgetProvider : AppWidgetProvider() {
                     appWidgetManager.updateAppWidget(id, views)
                 }
             } catch (_: Exception) {
-                // Cegah crash jika terjadi unhandled error
+                // Cegah crash jika terjadi unhandled error; tampilkan status kegagalan jujur
+                for (id in widgetIds) {
+                    val errorViews = RemoteViews(context.packageName, R.layout.widget_bontot_medium)
+                    bindIntents(context, errorViews)
+                    errorViews.setTextViewText(R.id.tv_widget_temp, "--°")
+                    errorViews.setTextViewText(R.id.tv_widget_feels_like, "Terasa: --°C")
+                    errorViews.setTextViewText(R.id.tv_widget_condition, "Data tidak tersedia")
+                    errorViews.setTextViewText(R.id.tv_widget_aqi, "AQI: Tidak tersedia")
+                    errorViews.setTextViewText(R.id.tv_widget_updated, "Gagal memuat cuaca")
+                    appWidgetManager.partiallyUpdateAppWidget(id, errorViews)
+                }
             } finally {
                 isRefreshing.set(false)
                 try {

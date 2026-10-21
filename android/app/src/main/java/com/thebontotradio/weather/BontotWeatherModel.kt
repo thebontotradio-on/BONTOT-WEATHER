@@ -2,15 +2,15 @@ package com.thebontotradio.weather
 
 /**
  * Model data cuaca dan pemetaan WMO untuk Android Home Screen Widget.
- * Mengikuti logika resmi web app BONTOT WEATHER.
+ * Mengikuti logika resmi web app BONTOT WEATHER tanpa data buatan/palsu.
  */
 data class WeatherWidgetData(
-    val locationName: String = "Jakarta",
+    val locationName: String = "--",
     val temperature: String = "--°",
     val feelsLike: String = "Terasa: --°C",
-    val condition: String = "Memuat Cuaca...",
-    val aqiLabel: String = "Kualitas Udara: --",
-    val lastUpdated: String = "Diperbarui: --.--",
+    val condition: String = "Data tidak tersedia",
+    val aqiLabel: String = "AQI: Tidak tersedia",
+    val lastUpdated: String = "Data belum tersedia",
     val isDay: Boolean = true,
     val isOffline: Boolean = false
 )
@@ -18,9 +18,10 @@ data class WeatherWidgetData(
 object BontotWeatherHelper {
     /**
      * Menerjemahkan kode WMO (0-99) ke Bahasa Indonesia secara netral & null-safe.
+     * Mengembalikan "Data tidak tersedia" jika kode null atau tidak dikenali (tidak pernah mengarang data).
      */
     fun getWmoCondition(code: Int?, isDay: Boolean): String {
-        if (code == null) return "Kondisi Tidak Diketahui"
+        if (code == null) return "Data tidak tersedia"
         return when (code) {
             0 -> if (isDay) "Cerah" else "Malam Cerah"
             1 -> if (isDay) "Cerah Berawan" else "Malam Cerah Berawan"
@@ -32,15 +33,16 @@ object BontotWeatherHelper {
             65, 67, 82 -> "Hujan Lebat"
             71, 73, 75, 77, 85, 86 -> "Salju"
             95, 96, 99 -> "Badai Petir"
-            else -> "Kondisi Tidak Diketahui"
+            else -> "Data tidak tersedia"
         }
     }
 
     /**
      * Menerjemahkan US AQI ke standar kesehatan pernapasan.
+     * Mengembalikan "AQI: Tidak tersedia" jika nilai null atau < 0 (tidak pernah mengarang nilai).
      */
     fun getAqiLabel(aqi: Int?): String {
-        if (aqi == null || aqi < 0) return "Kualitas Udara: Tidak Tersedia"
+        if (aqi == null || aqi < 0) return "AQI: Tidak tersedia"
         val status = when {
             aqi <= 50 -> "Baik ($aqi)"
             aqi <= 100 -> "Sedang ($aqi)"

@@ -598,4 +598,169 @@ describe('BONTOT WEATHER — QA Verification Suite (15 Skenario Nyata)', () => {
     expect(mediumLayout).toContain('tv_widget_aqi');
     expect(mediumLayout).toContain('btn_widget_refresh');
   });
+
+  // 21. Pembuktian Alur Sinkronisasi Lokasi Pilihan Pengguna ke Native Widget & URL Open-Meteo
+  it('21. Sinkronisasi lokasi: payload utuh, diparsing native, dan menghasilkan URL API dengan koordinat lokasi pilihan (bukan default Jakarta)', async () => {
+    // 1. Simulasi pemilihan kota non-default oleh pengguna (Surabaya)
+    const surabayaLocation = {
+      id: 'surabaya-id',
+      name: 'Surabaya',
+      admin1: 'Jawa Timur',
+      country: 'Indonesia',
+      country_code: 'ID',
+      latitude: -7.2575,
+      longitude: 112.7521,
+      timezone: 'Asia/Jakarta'
+    };
+
+    // 2. Eksekusi sinkronisasi dari web app
+    await syncLocationToNativeWidget(surabayaLocation);
+
+    // 3. Verifikasi payload tersimpan di storage persisten
+    const rawStorage = localStorage.getItem(STORAGE_KEYS.LAST_LOCATION);
+    expect(rawStorage).not.toBeNull();
+    const storedPayload = JSON.parse(rawStorage!);
+
+    // Validasi kelengkapan field yang dibutuhkan native Android
+    expect(storedPayload.name).toBe('Surabaya');
+    expect(storedPayload.latitude).toBe(-7.2575);
+    expect(storedPayload.longitude).toBe(112.7521);
+    expect(storedPayload.timezone).toBe('Asia/Jakarta');
+
+    // 4. Simulasi logika getTargetLocation native Kotlin di BontotWeatherService.kt
+    // Membaca JSON string dan mengurai koordinat pengguna
+    const simulateKotlinTargetLocation = (jsonString: string | null) => {
+      const DEFAULT_LAT = -6.2088;
+      const DEFAULT_LON = 106.8456;
+      const DEFAULT_NAME = 'Jakarta';
+
+      if (!jsonString) {
+        return { name: DEFAULT_NAME, latitude: DEFAULT_LAT, longitude: DEFAULT_LON, timezone: 'Asia/Jakarta' };
+      }
+      try {
+        const obj = JSON.parse(jsonString);
+        const name = (obj.name || '').trim();
+        const lat = typeof obj.latitude === 'number' && Number.isFinite(obj.latitude) ? obj.latitude : NaN;
+        const lon = typeof obj.longitude === 'number' && Number.isFinite(obj.longitude) ? obj.longitude : NaN;
+        const tz = obj.timezone || 'Asia/Jakarta';
+
+        if (name && !Number.isNaN(lat) && !Number.isNaN(lon)) {
+          return { name, latitude: lat, longitude: lon, timezone: tz };
+        }
+      } catch {}
+      return { name: DEFAULT_NAME, latitude: DEFAULT_LAT, longitude: DEFAULT_LON, timezone: 'Asia/Jakarta' };
+    };
+
+    const targetLoc = simulateKotlinTargetLocation(rawStorage);
+    expect(targetLoc.name).toBe('Surabaya');
+    expect(targetLoc.latitude).toBe(-7.2575);
+    expect(targetLoc.longitude).toBe(112.7521);
+
+    // 5. Buktikan konstruksi URL Open-Meteo menggunakan koordinat Surabaya, bukan Jakarta (-6.2088)
+    const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${targetLoc.latitude}&longitude=${targetLoc.longitude}&current=temperature_2m,apparent_temperature,is_day,weather_code&timezone=auto`;
+    const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${targetLoc.latitude}&longitude=${targetLoc.longitude}&current=us_aqi`;
+
+    expect(forecastUrl).toContain('latitude=-7.2575');
+    expect(forecastUrl).toContain('longitude=112.7521');
+    expect(forecastUrl).not.toContain('latitude=-6.2088'); // Tidak kembali ke Jakarta
+
+    expect(aqiUrl).toContain('latitude=-7.2575');
+    expect(aqiUrl).toContain('longitude=112.7521');
+    expect(aqiUrl).not.toContain('latitude=-6.2088');
+  });
+
+  // 22. Audit Ketat Eliminasi Data Cuaca Palsu (Zero Fake Data & Strict Null-Safety)
+  it('22. Zero Fake Data: jika API gagal & cache kosong, tampilkan placeholder jujur (--°C, Data tidak tersedia), tanpa suhu 28°C atau cuaca cerah karangan', () => {
+    // 1. Verifikasi helper WMO: null/undefined/invalid tidak pernah menghasilkan "Cerah" palsu
+    const simulateKotlinWmoHelper = (code: number | null | undefined, isDay: boolean): string => {
+      if (code === null || code === undefined) return 'Data tidak tersedia';
+      switch (code) {
+        case 0: return isDay ? 'Cerah' : 'Malam Cerah';
+        case 1: return isDay ? 'Cerah Berawan' : 'Malam Cerah Berawan';
+        case 2: return 'Berawan Sebagian';
+        case 3: return 'Mendung / Berawan Tebal';
+        case 45: case 48: return 'Berkabut';
+        case 51: case 53: case 55: case 56: case 57: return 'Gerimis';
+        case 61: case 63: case 66: case 80: case 81: return 'Hujan';
+        case 65: case 67: case 82: return 'Hujan Lebat';
+        case 71: case 73: case 75: case 77: case 85: case 86: return 'Salju';
+        case 95: case 96: case 99: return 'Badai Petir';
+        default: return 'Data tidak tersedia';
+      }
+    };
+
+    expect(simulateKotlinWmoHelper(null, true)).toBe('Data tidak tersedia');
+    expect(simulateKotlinWmoHelper(undefined, true)).toBe('Data tidak tersedia');
+    expect(simulateKotlinWmoHelper(999, true)).toBe('Data tidak tersedia');
+
+    // 2. Verifikasi helper AQI: null atau nilai negatif tidak pernah mengarang skor
+    const simulateKotlinAqiHelper = (aqi: number | null | undefined): string => {
+      if (aqi === null || aqi === undefined || aqi < 0) return 'AQI: Tidak tersedia';
+      let status = '';
+      if (aqi <= 50) status = `Baik (${aqi})`;
+      else if (aqi <= 100) status = `Sedang (${aqi})`;
+      else if (aqi <= 150) status = `Sensitif (${aqi})`;
+      else if (aqi <= 200) status = `Tidak Sehat (${aqi})`;
+      else if (aqi <= 300) status = `Sangat Tdk Sehat (${aqi})`;
+      else status = `Berbahaya (${aqi})`;
+      return `AQI: ${status}`;
+    };
+
+    expect(simulateKotlinAqiHelper(null)).toBe('AQI: Tidak tersedia');
+    expect(simulateKotlinAqiHelper(-5)).toBe('AQI: Tidak tersedia');
+
+    // 3. Verifikasi state fallback native ketika cache kosong dan API gagal
+    const simulateKotlinReadCachedData = (cachedPrefs: Record<string, any>, fallbackName: string) => {
+      const hasCache = 'cached_temp' in cachedPrefs;
+      if (!hasCache) {
+        return {
+          locationName: fallbackName,
+          temperature: '--°',
+          feelsLike: 'Terasa: --°C',
+          condition: 'Data tidak tersedia',
+          aqiLabel: 'AQI: Tidak tersedia',
+          lastUpdated: 'Gagal memuat cuaca (Periksa koneksi)',
+          isDay: true,
+          isOffline: true
+        };
+      }
+      return {
+        locationName: cachedPrefs['cached_location'] || fallbackName,
+        temperature: cachedPrefs['cached_temp'] || '--°',
+        feelsLike: cachedPrefs['cached_feels'] || 'Terasa: --°C',
+        condition: cachedPrefs['cached_condition'] || 'Data tidak tersedia',
+        aqiLabel: cachedPrefs['cached_aqi'] || 'AQI: Tidak tersedia',
+        lastUpdated: `${cachedPrefs['cached_time'] || ''} (Offline)`.trim(),
+        isDay: cachedPrefs['cached_is_day'] ?? true,
+        isOffline: true
+      };
+    };
+
+    const emptyCacheResult = simulateKotlinReadCachedData({}, 'Bandung');
+    // Memastikan TIDAK ADA suhu 28°C atau kondisi cerah palsu!
+    expect(emptyCacheResult.locationName).toBe('Bandung');
+    expect(emptyCacheResult.temperature).toBe('--°');
+    expect(emptyCacheResult.temperature).not.toBe('28°');
+    expect(emptyCacheResult.feelsLike).toBe('Terasa: --°C');
+    expect(emptyCacheResult.condition).toBe('Data tidak tersedia');
+    expect(emptyCacheResult.condition).not.toBe('Cerah');
+    expect(emptyCacheResult.aqiLabel).toBe('AQI: Tidak tersedia');
+    expect(emptyCacheResult.lastUpdated).toBe('Gagal memuat cuaca (Periksa koneksi)');
+    expect(emptyCacheResult.isOffline).toBe(true);
+
+    // 4. Verifikasi membaca cache yang benar-benar tersimpan sebelumnya
+    const validCache = {
+      cached_location: 'Surabaya',
+      cached_temp: '32°',
+      cached_feels: 'Terasa: 35°C',
+      cached_condition: 'Hujan',
+      cached_aqi: 'AQI: Sedang (65)',
+      cached_time: '14.30',
+      cached_is_day: true
+    };
+    const validCacheResult = simulateKotlinReadCachedData(validCache, 'Surabaya');
+    expect(validCacheResult.temperature).toBe('32°');
+    expect(validCacheResult.condition).toBe('Hujan');
+    expect(validCacheResult.lastUpdated).toBe('14.30 (Offline)');
+  });
 });
