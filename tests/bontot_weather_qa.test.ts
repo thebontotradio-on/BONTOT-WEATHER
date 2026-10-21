@@ -19,12 +19,15 @@ import {
   fetchOpenMeteoAirQuality,
   searchLocationsGeocoding,
   reverseGeocodeCoordinates,
+  getAtmosphericEffect,
   CACHE_MAX_ENTRIES,
   CACHE_STALE_THRESHOLD_MS,
   COORD_MATCH_TOLERANCE,
   DEFAULT_LOCATION,
   PRESET_CITIES
 } from '../src/App';
+import fs from 'node:fs';
+import path from 'node:path';
 
 describe('BONTOT WEATHER — QA Verification Suite (15 Skenario Nyata)', () => {
   beforeEach(() => {
@@ -400,5 +403,125 @@ describe('BONTOT WEATHER — QA Verification Suite (15 Skenario Nyata)', () => {
     // Saat unmount atau dependency berubah
     stopTimer1();
     expect(activeIntervalCount).toBe(0);
+  });
+
+  // 16. Pemetaan efek animasi atmosfer dinamis berdasarkan kategori cuaca dan waktu lokal (siang/malam)
+  it('16. Efek animasi atmosfer terpetakan secara presisi mengikuti kategori cuaca aktual', () => {
+    // Cerah siang
+    const sunnyDay = getAtmosphericEffect('clear-day', 1);
+    expect(sunnyDay.isSunnyDay).toBe(true);
+    expect(sunnyDay.isClearNight).toBe(false);
+    expect(sunnyDay.isRain).toBe(false);
+    expect(sunnyDay.isThunder).toBe(false);
+
+    // Cerah malam
+    const clearNight = getAtmosphericEffect('clear-night', 0);
+    expect(clearNight.isClearNight).toBe(true);
+    expect(clearNight.isSunnyDay).toBe(false);
+    expect(clearNight.isRain).toBe(false);
+
+    // Berawan sebagian siang & malam
+    const partlyDay = getAtmosphericEffect('partly-cloudy-day', 1);
+    expect(partlyDay.isSunnyDay).toBe(true);
+    expect(partlyDay.isCloudy).toBe(true);
+
+    const partlyNight = getAtmosphericEffect('partly-cloudy-night', 0);
+    expect(partlyNight.isClearNight).toBe(true);
+    expect(partlyNight.isCloudy).toBe(true);
+
+    // Berawan & mendung
+    const cloudy = getAtmosphericEffect('cloudy', 1);
+    expect(cloudy.isCloudy).toBe(true);
+    expect(cloudy.isSunnyDay).toBe(false);
+
+    const overcast = getAtmosphericEffect('overcast', 1);
+    expect(overcast.isCloudy).toBe(true);
+
+    // Gerimis
+    const drizzle = getAtmosphericEffect('drizzle', 1);
+    expect(drizzle.isDrizzle).toBe(true);
+    expect(drizzle.isRain).toBe(false);
+    expect(drizzle.isHeavyRain).toBe(false);
+
+    // Hujan normal
+    const rain = getAtmosphericEffect('rain', 1);
+    expect(rain.isRain).toBe(true);
+    expect(rain.isHeavyRain).toBe(false);
+
+    // Hujan lebat
+    const heavyRain = getAtmosphericEffect('heavy-rain', 1);
+    expect(heavyRain.isHeavyRain).toBe(true);
+    expect(heavyRain.isRain).toBe(false);
+
+    // Badai petir
+    const thunder = getAtmosphericEffect('thunderstorm', 1);
+    expect(thunder.isThunder).toBe(true);
+
+    // Kabut
+    const fog = getAtmosphericEffect('fog', 1);
+    expect(fog.isFog).toBe(true);
+    expect(fog.isSunnyDay).toBe(false);
+
+    // Salju
+    const snow = getAtmosphericEffect('snow', 1);
+    expect(snow.isSnow).toBe(true);
+    expect(snow.isRain).toBe(false);
+  });
+
+  // 17. Kondisi cuaca unknown dan null menghasilkan efek atmosfer netral tanpa memicu efek cuaca palsu
+  it('17. Kondisi cuaca unknown, null, dan undefined ditangani secara netral', () => {
+    const unknownEffect = getAtmosphericEffect('unknown', 1);
+    expect(unknownEffect.isUnknown).toBe(true);
+    expect(unknownEffect.isSunnyDay).toBe(false);
+    expect(unknownEffect.isClearNight).toBe(false);
+    expect(unknownEffect.isRain).toBe(false);
+    expect(unknownEffect.isHeavyRain).toBe(false);
+    expect(unknownEffect.isThunder).toBe(false);
+    expect(unknownEffect.isSnow).toBe(false);
+
+    const nullEffect = getAtmosphericEffect(null as any, 1);
+    expect(nullEffect.isUnknown).toBe(true);
+    expect(nullEffect.isThunder).toBe(false);
+
+    const undefinedEffect = getAtmosphericEffect(undefined as any, 1);
+    expect(undefinedEffect.isUnknown).toBe(true);
+
+    const emptyEffect = getAtmosphericEffect('', 1);
+    expect(emptyEffect.isUnknown).toBe(true);
+  });
+
+  // 18. Verifikasi integritas logo resmi dan aset favicon lokal
+  it('18. File logo resmi dan favicon lokal tersedia secara offline dan berformat valid', () => {
+    const logoPath = path.resolve(process.cwd(), 'public/bontot-weather-logo.png');
+    const faviconPath = path.resolve(process.cwd(), 'public/favicon.png');
+    const indexHtmlPath = path.resolve(process.cwd(), 'index.html');
+    const appTsxPath = path.resolve(process.cwd(), 'src/App.tsx');
+
+    // Pastikan file logo resmi ada dan memiliki ukuran > 500 KB (resolusi tinggi)
+    expect(fs.existsSync(logoPath)).toBe(true);
+    const logoStat = fs.statSync(logoPath);
+    expect(logoStat.size).toBeGreaterThan(500 * 1024);
+
+    // Header PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
+    const logoBuffer = fs.readFileSync(logoPath);
+    expect(logoBuffer[0]).toBe(0x89);
+    expect(logoBuffer[1]).toBe(0x50); // P
+    expect(logoBuffer[2]).toBe(0x4e); // N
+    expect(logoBuffer[3]).toBe(0x47); // G
+
+    // Pastikan favicon ada
+    expect(fs.existsSync(faviconPath)).toBe(true);
+    const faviconBuffer = fs.readFileSync(faviconPath);
+    expect(faviconBuffer[0]).toBe(0x89);
+    expect(faviconBuffer[1]).toBe(0x50);
+
+    // Pastikan index.html mereferensikan aset lokal
+    const indexHtml = fs.readFileSync(indexHtmlPath, 'utf-8');
+    expect(indexHtml).toContain('href="/favicon.png"');
+    expect(indexHtml).toContain('href="/bontot-weather-logo.png"');
+
+    // Pastikan src/App.tsx menggunakan logo resmi lokal
+    const appTsx = fs.readFileSync(appTsxPath, 'utf-8');
+    expect(appTsx).toContain('src="/bontot-weather-logo.png"');
   });
 });

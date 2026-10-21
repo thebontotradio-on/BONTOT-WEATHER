@@ -1264,29 +1264,95 @@ export function WeatherSvgIcon({ iconType, size = 40, className = '' }: { iconTy
   }
 }
 
-export function AtmosphericBackground({ category, isDark }: { category: string; isDark: boolean }) {
-  const isRainy = category === 'rain' || category === 'heavy-rain' || category === 'drizzle' || category === 'thunderstorm';
+/**
+ * Pemetaan efek atmosfer berdasarkan kategori cuaca dan waktu lokal (siang/malam).
+ * Mengembalikan flag kondisi atmosfer yang valid dan null-safe.
+ */
+export function getAtmosphericEffect(category: string, isDay: any = 1) {
+  const day = Boolean(isDay);
+  const isSunnyDay = category === 'clear-day' || (category === 'partly-cloudy-day' && day);
+  const isClearNight = category === 'clear-night' || (category === 'partly-cloudy-night' && !day);
+  const isCloudy = category === 'cloudy' || category === 'overcast' || category === 'partly-cloudy-day' || category === 'partly-cloudy-night';
+  const isDrizzle = category === 'drizzle';
+  const isRain = category === 'rain';
+  const isHeavyRain = category === 'heavy-rain';
   const isThunder = category === 'thunderstorm';
-  const isSunny = category === 'clear-day' || category === 'partly-cloudy-day';
-  const isNight = category === 'clear-night' || category === 'partly-cloudy-night';
+  const isFog = category === 'fog';
+  const isSnow = category === 'snow';
+  const isUnknown =
+    category === 'unknown' ||
+    !category ||
+    (!isSunnyDay && !isClearNight && !isCloudy && !isDrizzle && !isRain && !isHeavyRain && !isThunder && !isFog && !isSnow);
+
+  return {
+    isSunnyDay,
+    isClearNight,
+    isCloudy,
+    isDrizzle,
+    isRain,
+    isHeavyRain,
+    isThunder,
+    isFog,
+    isSnow,
+    isUnknown
+  };
+}
+
+export function AtmosphericBackground({
+  category,
+  isDark,
+  isDay = 1
+}: {
+  category: string;
+  isDark: boolean;
+  isDay?: any;
+}) {
+  const [isTabVisible, setIsTabVisible] = useState(() => (typeof document !== 'undefined' ? !document.hidden : true));
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const handleVisibility = () => {
+      setIsTabVisible(!document.hidden);
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
+
+  const effects = useMemo(() => getAtmosphericEffect(category, isDay), [category, isDay]);
+  const { isSunnyDay, isClearNight, isCloudy, isDrizzle, isRain, isHeavyRain, isThunder, isFog, isSnow } = effects;
+
+  // Gradasi dinamis atmosfer berdasarkan tema dan kondisi cuaca aktual
+  const skyGradient = useMemo(() => {
+    if (isDark) {
+      if (isThunder || isHeavyRain) return 'bg-gradient-to-br from-[#02050e] via-[#070d1e] to-[#040816]';
+      if (isClearNight) return 'bg-gradient-to-br from-[#030712] via-[#071026] to-[#0b1739]';
+      if (isSunnyDay) return 'bg-gradient-to-br from-[#050c1e] via-[#091b36] to-[#0a2540]';
+      if (isFog) return 'bg-gradient-to-br from-[#070d18] via-[#0e1724] to-[#121c2c]';
+      if (isSnow) return 'bg-gradient-to-br from-[#060c18] via-[#0a182d] to-[#10243d]';
+      return 'bg-gradient-to-br from-[#050914] via-[#0B132B] to-[#091931]';
+    } else {
+      if (isThunder || isHeavyRain) return 'bg-gradient-to-br from-slate-400 via-sky-300 to-indigo-300';
+      if (isSunnyDay) return 'bg-gradient-to-br from-sky-200 via-amber-100 to-blue-100';
+      if (isClearNight) return 'bg-gradient-to-br from-slate-200 via-indigo-100 to-blue-200';
+      if (isFog) return 'bg-gradient-to-br from-slate-200 via-gray-100 to-slate-300';
+      if (isSnow) return 'bg-gradient-to-br from-blue-100 via-slate-50 to-cyan-100';
+      return 'bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100';
+    }
+  }, [isDark, isThunder, isHeavyRain, isClearNight, isSunnyDay, isFog, isSnow]);
 
   return (
-    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-      <div
-        className={`absolute inset-0 transition-colors duration-1000 ${
-          isDark
-            ? 'bg-gradient-to-br from-[#050914] via-[#0B132B] to-[#091931]'
-            : 'bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100'
-        }`}
-      />
-      {isSunny && (
-        <div
-          className="absolute -top-32 -right-32 w-[520px] h-[520px] rounded-full blur-3xl opacity-35 transition-opacity duration-1000"
-          style={{
-            background: 'radial-gradient(circle, rgba(251,191,36,0.55) 0%, rgba(0,245,212,0.15) 55%, transparent 75%)'
-          }}
-        />
-      )}
+    <div
+      className={`fixed inset-0 pointer-events-none overflow-hidden z-0 ${
+        !isTabVisible ? 'animations-paused' : ''
+      }`}
+      aria-hidden="true"
+    >
+      {/* 1. Base Sky Gradient */}
+      <div className={`absolute inset-0 transition-colors duration-1000 ${skyGradient}`} />
+
+      {/* 2. Global Ambient Atmospheric Radial Lighting */}
       <div
         className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-3xl opacity-25"
         style={{
@@ -1299,41 +1365,199 @@ export function AtmosphericBackground({ category, isDark }: { category: string; 
           background: 'radial-gradient(circle, rgba(59,130,246,0.45) 0%, rgba(0,229,255,0.15) 65%, transparent 85%)'
         }}
       />
-      {isNight && isDark && (
-        <div className="absolute inset-0 opacity-50">
-          {[
-            { top: '12%', left: '18%' },
-            { top: '8%', left: '64%' },
-            { top: '22%', left: '82%' },
-            { top: '34%', left: '12%' },
-            { top: '16%', left: '42%' },
-            { top: '28%', left: '55%' }
-          ].map((star, idx) => (
-            <span
-              key={idx}
-              style={{ top: star.top, left: star.left }}
-              className="absolute w-1.5 h-1.5 rounded-full bg-cyan-200 animate-pulse"
-            />
-          ))}
+
+      {/* 3. Cerah Siang: Sun Aura, Glow, dan Cahaya Atmosfer Lembut */}
+      {isSunnyDay && (
+        <div className="absolute -top-24 -right-24 w-[580px] h-[580px] rounded-full pointer-events-none anim-sun-pulse">
+          <div
+            className="w-full h-full rounded-full blur-3xl opacity-40 transition-opacity duration-1000"
+            style={{
+              background:
+                'radial-gradient(circle, rgba(251,191,36,0.65) 0%, rgba(245,158,11,0.25) 45%, rgba(0,245,212,0.12) 65%, transparent 80%)'
+            }}
+          />
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full blur-xl opacity-60"
+            style={{
+              background: 'radial-gradient(circle, rgba(254,240,138,0.9) 0%, rgba(251,191,36,0.4) 60%, transparent 85%)'
+            }}
+          />
         </div>
       )}
-      {isRainy && (
-        <div className="absolute inset-0 opacity-35">
-          {Array.from({ length: 20 }).map((_, idx) => (
+
+      {/* 4. Cerah Malam: Bulan, Halo Lunar, dan Bintang Berkelip */}
+      {isClearNight && (
+        <div className="absolute inset-0">
+          {/* Luminous Moon & Halo */}
+          <div className="absolute top-8 right-12 w-28 h-28 anim-moon-halo pointer-events-none">
+            <div
+              className="absolute inset-0 rounded-full blur-2xl opacity-40"
+              style={{
+                background: 'radial-gradient(circle, rgba(0,245,212,0.4) 0%, rgba(147,197,253,0.3) 50%, transparent 75%)'
+              }}
+            />
+            <svg viewBox="0 0 100 100" className="w-12 h-12 text-cyan-200 drop-shadow-[0_0_12px_rgba(0,245,212,0.7)] ml-auto mt-2">
+              <path
+                d="M50 15 A35 35 0 1 0 85 75 A30 30 0 1 1 50 15 Z"
+                fill="currentColor"
+                opacity="0.85"
+              />
+            </svg>
+          </div>
+
+          {/* Twinkling Stars */}
+          <div className="absolute inset-0 opacity-70">
+            {[
+              { top: '10%', left: '15%', size: 'w-1 h-1', delay: '0s' },
+              { top: '7%', left: '48%', size: 'w-1.5 h-1.5', delay: '0.8s' },
+              { top: '14%', left: '72%', size: 'w-1 h-1', delay: '1.4s' },
+              { top: '22%', left: '88%', size: 'w-2 h-2', delay: '2.1s' },
+              { top: '32%', left: '8%', size: 'w-1 h-1', delay: '0.5s' },
+              { top: '28%', left: '38%', size: 'w-1.5 h-1.5', delay: '1.9s' },
+              { top: '38%', left: '60%', size: 'w-1 h-1', delay: '2.7s' },
+              { top: '18%', left: '28%', size: 'w-1.5 h-1.5', delay: '1.1s' },
+              { top: '45%', left: '82%', size: 'w-1 h-1', delay: '0.3s' },
+              { top: '50%', left: '22%', size: 'w-1 h-1', delay: '2.3s' }
+            ].map((star, idx) => (
+              <span
+                key={idx}
+                style={{
+                  top: star.top,
+                  left: star.left,
+                  animationDelay: star.delay
+                }}
+                className={`absolute ${star.size} rounded-full bg-cyan-100 shadow-[0_0_4px_#00f5d4] anim-star-twinkle`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 5. Berawan: Lapisan Awan Melayang dengan Kecepatan Parallaks Berbeda */}
+      {isCloudy && (
+        <div className="absolute inset-0 opacity-30">
+          {/* Layer 1: Awan latar lambat */}
+          <div className="absolute top-6 -left-10 w-[120%] h-48 anim-cloud-slow">
+            <svg viewBox="0 0 800 200" className="w-full h-full fill-slate-300/20 dark:fill-slate-600/30 blur-sm">
+              <path d="M50 150 Q90 90 170 110 Q220 50 310 80 Q380 40 450 90 Q530 60 600 110 Q660 80 730 130 Q780 120 800 150 L800 200 L0 200 Z" />
+            </svg>
+          </div>
+          {/* Layer 2: Awan foreground lebih cepat */}
+          <div className="absolute top-20 -right-10 w-[115%] h-56 anim-cloud-fast">
+            <svg viewBox="0 0 800 200" className="w-full h-full fill-slate-200/25 dark:fill-slate-500/25 blur-[2px]">
+              <path d="M0 160 Q80 110 160 130 Q240 70 330 110 Q400 60 480 100 Q560 70 650 120 Q720 90 800 160 L800 200 L0 200 Z" />
+            </svg>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Gerimis: Tetesan Halus Miring */}
+      {isDrizzle && (
+        <div className="absolute inset-0 opacity-40">
+          {Array.from({ length: 24 }).map((_, idx) => (
             <div
               key={idx}
               style={{
-                left: `${(idx * 5.2) % 100}%`,
-                top: `-${(idx * 7) % 25}%`,
-                animationDuration: `${0.7 + (idx % 5) * 0.15}s`,
-                animationDelay: `${(idx % 7) * 0.2}s`
+                left: `${(idx * 4.2) % 100}%`,
+                animationDelay: `${(idx * 0.12) % 1.1}s`
               }}
-              className="w-[1.5px] h-12 bg-gradient-to-b from-transparent via-cyan-400 to-blue-300 absolute animate-bounce"
+              className="w-[1px] h-6 bg-gradient-to-b from-transparent via-cyan-300 to-sky-400 absolute anim-drizzle"
             />
           ))}
         </div>
       )}
-      {isThunder && <div className="absolute inset-0 bg-cyan-300/5 animate-pulse" />}
+
+      {/* 7. Hujan Sedang: Presipitasi Teratur */}
+      {isRain && (
+        <div className="absolute inset-0 opacity-55">
+          {Array.from({ length: 32 }).map((_, idx) => (
+            <div
+              key={idx}
+              style={{
+                left: `${(idx * 3.1) % 100}%`,
+                animationDelay: `${(idx * 0.08) % 0.85}s`
+              }}
+              className="w-[1.5px] h-10 bg-gradient-to-b from-transparent via-cyan-400 to-blue-400 absolute anim-rain-normal"
+            />
+          ))}
+        </div>
+      )}
+
+      {/* 8. Hujan Lebat: Curah Hujan Tinggi, Cepat, dan Atmosfer Lebih Gelap */}
+      {isHeavyRain && (
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-slate-950/35" />
+          <div className="absolute inset-0 opacity-75">
+            {Array.from({ length: 48 }).map((_, idx) => (
+              <div
+                key={idx}
+                style={{
+                  left: `${(idx * 2.1) % 100}%`,
+                  animationDelay: `${(idx * 0.05) % 0.6}s`
+                }}
+                className="w-[2px] h-16 bg-gradient-to-b from-transparent via-sky-300 to-blue-500 absolute anim-heavy-rain"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 9. Badai Petir: Hujan Lebat, Awan Badai Gelap, dan Kilatan Petir Nyata */}
+      {isThunder && (
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-slate-950/45" />
+          {/* Kilatan Petir Terprogram */}
+          <div className="absolute inset-0 bg-cyan-200 anim-lightning pointer-events-none" />
+          {/* Tetesan Hujan Badai */}
+          <div className="absolute inset-0 opacity-70">
+            {Array.from({ length: 40 }).map((_, idx) => (
+              <div
+                key={idx}
+                style={{
+                  left: `${(idx * 2.5) % 100}%`,
+                  animationDelay: `${(idx * 0.06) % 0.6}s`
+                }}
+                className="w-[2px] h-14 bg-gradient-to-b from-transparent via-cyan-200 to-blue-400 absolute anim-heavy-rain"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 10. Kabut: Lapisan Kabut Mengambang Lembut */}
+      {isFog && (
+        <div className="absolute inset-0 opacity-45 pointer-events-none">
+          <div
+            className="absolute top-1/4 -left-1/4 w-[150%] h-64 rounded-full blur-3xl anim-fog-drift"
+            style={{
+              background: 'radial-gradient(ellipse at center, rgba(148,163,184,0.35) 0%, rgba(203,213,225,0.15) 50%, transparent 80%)'
+            }}
+          />
+          <div
+            className="absolute bottom-1/4 -right-1/4 w-[150%] h-72 rounded-full blur-3xl anim-fog-drift"
+            style={{
+              animationDelay: '6s',
+              background: 'radial-gradient(ellipse at center, rgba(100,116,139,0.3) 0%, rgba(148,163,184,0.12) 55%, transparent 80%)'
+            }}
+          />
+        </div>
+      )}
+
+      {/* 11. Salju: Partikel Salju Melayang & Berotasi Lembut */}
+      {isSnow && (
+        <div className="absolute inset-0 opacity-75">
+          {Array.from({ length: 24 }).map((_, idx) => (
+            <div
+              key={idx}
+              style={{
+                left: `${(idx * 4.1) % 100}%`,
+                animationDelay: `${(idx * 0.3) % 5.5}s`
+              }}
+              className="absolute w-2 h-2 rounded-full bg-white shadow-[0_0_8px_#ffffff] anim-snow"
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -2199,7 +2423,7 @@ export default function App() {
 
   return (
     <div className={`min-h-screen relative font-sans selection:bg-cyan-500 selection:text-slate-950 ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>
-      <AtmosphericBackground category={currentWeatherInfo.category} isDark={isDark} />
+      <AtmosphericBackground category={currentWeatherInfo.category} isDark={isDark} isDay={weatherData?.current?.is_day ?? 1} />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6">
         {/* HEADER APLIKASI */}
@@ -2207,9 +2431,14 @@ export default function App() {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 p-0.5 shadow-lg shadow-cyan-500/25 flex items-center justify-center">
-                  <div className="w-full h-full bg-[#060B19] rounded-[14px] flex items-center justify-center">
-                    <CloudLightning className="w-6 h-6 text-cyan-400" />
+                <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-400/40 via-blue-500/30 to-indigo-600/40 p-0.5 shadow-lg shadow-cyan-500/25 flex items-center justify-center overflow-hidden shrink-0 group">
+                  <div className="w-full h-full bg-[#060B19] rounded-[14px] flex items-center justify-center p-1 overflow-hidden">
+                    <img
+                      src="/bontot-weather-logo.png"
+                      alt="Logo Resmi BONTOT WEATHER"
+                      className="w-full h-full object-contain rounded-xl drop-shadow-[0_2px_8px_rgba(0,245,212,0.4)] transition-transform duration-300 group-hover:scale-110"
+                      loading="eager"
+                    />
                   </div>
                 </div>
                 <div>
@@ -3257,11 +3486,17 @@ export default function App() {
           )}
         </section>
 
-        {/* FOOTER & TRANSPARANSI DATA */}
-        <footer className={`text-center py-4 text-xs ${mutedText} space-y-1`}>
-          <p className="font-semibold text-cyan-400">
-            {APP_NAME} — &ldquo;{APP_TAGLINE}&rdquo;
-          </p>
+        <footer className={`text-center py-6 text-xs ${mutedText} space-y-2`}>
+          <div className="flex items-center justify-center gap-2">
+            <img
+              src="/bontot-weather-logo.png"
+              alt="BONTOT WEATHER Emblem"
+              className="w-5 h-5 object-contain rounded-md drop-shadow-[0_0_8px_rgba(0,245,212,0.4)]"
+            />
+            <p className="font-semibold text-cyan-400">
+              {APP_NAME} — &ldquo;{APP_TAGLINE}&rdquo;
+            </p>
+          </div>
           <p>
             Sumber Data Terhubung: <strong>Open-Meteo Weather Forecast API</strong>,{' '}
             <strong>Open-Meteo Air Quality API</strong> &{' '}

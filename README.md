@@ -6,6 +6,36 @@ Aplikasi pemantauan cuaca dan kualitas udara hiper-lokal, modern, dan andal berb
 
 ---
 
+## Identitas Visual Resmi & Aset Lokal
+
+- **Official Logo:** Menggunakan logo resmi BONTOT WEATHER beresolusi tinggi (1254x1254 px) yang disimpan secara lokal di `public/bontot-weather-logo.png` tanpa ketergantungan pada hosting gambar eksternal saat aplikasi berjalan.
+- **Favicon & Apple Touch Icon:** Dikonfigurasi di `index.html` menggunakan `public/favicon.png` dan `public/bontot-weather-logo.png`.
+- **Integrasi Desain:** Logo resmi terintegrasi di navbar header dengan efek glowing container, border cyan-indigo, dan mikro-animasi hover scale, serta lambang resmi di footer aplikasi.
+
+---
+
+## Animasi Atmosfer Dinamis Berbasis Cuaca Aktual
+
+Aplikasi menyajikan atmosfer latar belakang (`AtmosphericBackground`) yang hidup dan beradaptasi secara otomatis mengikuti data cuaca Open-Meteo dan siklus siang/malam lokasi:
+
+1. **Cerah Siang (`clear-day` / `partly-cloudy-day`):** Pancaran aura matahari keemasan lembut, denyut atmosfer halus (`anim-sun-pulse`), dan gradasi langit hangat.
+2. **Cerah Malam (`clear-night` / `partly-cloudy-night`):** Bulan bercahaya dengan halo korona lunar lembut (`anim-moon-halo`) dan taburan 10+ bintang berkelip acak (`anim-star-twinkle`).
+3. **Berawan & Mendung (`cloudy` / `overcast`):** Multi-lapisan awan parallaks melayang dengan kecepatan berbeda (`anim-cloud-slow` dan `anim-cloud-fast`) memberikan kedalaman visual.
+4. **Gerimis (`drizzle`):** Partikel tetesan air halus miring dengan kecepatan konstan (`anim-drizzle`).
+5. **Hujan Sedang (`rain`):** Presipitasi tetesan air teratur dengan sudut kemiringan natural (`anim-rain-normal`).
+6. **Hujan Lebat (`heavy-rain`):** Curahan hujan berdensitas tinggi, kecepatan tinggi (`anim-heavy-rain`), disertai atmosfer langit mendung gelap.
+7. **Badai Petir (`thunderstorm`):** Hujan badai lebat disertai kilatan petir ambien berkala (`anim-lightning`) yang dipicu **hanya** jika kondisi badai terindikasi resmi dari data WMO.
+8. **Berkabut (`fog`):** Lapisan kabut lembut horizontal yang mengalir perlahan bolak-balik dengan variasi kedalaman (`anim-fog-drift`).
+9. **Salju (`snow`):** Butiran kristal salju melayang turun dengan ayunan sinusoidal dan rotasi halus (`anim-snow`).
+10. **Kondisi Tidak Diketahui (`unknown` / `null`):** Tampilan gradasi kosmik netral tanpa menciptakan efek cuaca palsu.
+
+### Aksesibilitas & Efisiensi Performa:
+- **`prefers-reduced-motion`:** Menghormati pengaturan aksesibilitas sistem pengguna. Bila diaktifkan, seluruh animasi dihentikan dan beralih ke gradasi statis.
+- **Optimasi Tab Tidak Aktif:** Menggunakan event listener `document.visibilitychange` untuk menghentikan (`animation-play-state: paused`) proses render saat peramban berada di tab latar belakang, menghemat daya baterai dan siklus GPU.
+- **GPU-Accelerated:** Seluruh animasi dibangun menggunakan CSS 3D transforms (`translate3d`) dan `opacity` tanpa memicu layout reflow.
+
+---
+
 ## Fitur Utama
 
 - **Live Weather Metrics:** Suhu aktual, suhu terasa (*apparent temperature*), kelembapan relatif, kecepatan & arah angin, tekanan udara permukaan, jarak pandang (*visibility*), indeks UV, titik embun, dan estimasi curah hujan.
@@ -17,11 +47,11 @@ Aplikasi pemantauan cuaca dan kualitas udara hiper-lokal, modern, dan andal berb
   - Batas maksimal 10 entri cache.
   - Kedaluwarsa otomatis setelah 2 jam (*stale threshold* 7.200.000 ms) atau bila timestamp tidak valid.
   - Pencocokan koordinat geografis berbasis toleransi presisi $\pm 0.01^\circ$ (~1,1 km) untuk mencegah cache salah lokasi.
-- **In-App QA Diagnostic Suite:** Panel diagnostik interaktif terintegrasi yang menjalankan 15 pengujian skenario nyata secara langsung di peramban.
+- **In-App QA Diagnostic Suite:** Panel diagnostik interaktif terintegrasi yang menjalankan pengujian skenario nyata secara langsung di peramban.
 
 ---
 
-## 15 Perbaikan Kritis & Integritas Data
+## 18 Skenario Pengujian QA Terverifikasi
 
 1. **Integritas Data Hujan:** Nilai peluang hujan yang hilang (`null`) tidak pernah dipalsukan menjadi `0%`.
 2. **Indeks UV Independen:** Data UV yang hilang tidak diasumsikan "Aman".
@@ -38,6 +68,9 @@ Aplikasi pemantauan cuaca dan kualitas udara hiper-lokal, modern, dan andal berb
 13. **Null-Safety Visualisasi:** Grafik dan kartu metrik tetap stabil saat API Open-Meteo mengalami *missing values*.
 14. **Sinkronisasi Zona Waktu:** Waktu lokal beradaptasi secara dinamis mengikuti koordinat terpilih (WIB, WITA, WIT, dsb).
 15. **Timer Pembaruan Tunggal:** Pembaruan otomatis (auto-refresh) memakai siklus interval tunggal yang bersih tanpa *leak*.
+16. **Pemetaan Efek Atmosfer Dinamis:** Pengujian presisi pemetaan animasi visual cuaca cerah, malam, berawan, gerimis, hujan, badai petir, kabut, dan salju.
+17. **Netralitas Kondisi Unknown & Null:** Memastikan data cuaca kosong/unknown tidak memicu efek visual palsu.
+18. **Validitas Logo Resmi & Favicon:** Memastikan file gambar logo resmi lokal berukuran penuh, header PNG valid, dan favicon terpasang.
 
 ---
 
@@ -71,7 +104,7 @@ Aplikasi akan aktif di `http://localhost:5173`.
 ```bash
 npm test
 ```
-Menjalankan 15 skenario pengujian integrasi berbasis Vitest.
+Menjalankan 18 skenario pengujian integrasi berbasis Vitest.
 
 ### 5. Membangun Bundle Produksi
 ```bash
@@ -91,7 +124,7 @@ npm run preview
 ```
 BONTOT-WEATHER/
 ├── .gitignore                    # Aturan pengabaian file Git (node_modules, dist, .env, dll)
-├── index.html                    # Entry point HTML aplikasi dengan font Plus Jakarta Sans
+├── index.html                    # Entry point HTML aplikasi dengan font & favicon resmi
 ├── package.json                  # Metadata dependensi & script proyek
 ├── package-lock.json             # Kunci dependensi versi terkunci
 ├── postcss.config.js             # Konfigurasi PostCSS untuk Tailwind CSS
@@ -100,16 +133,19 @@ BONTOT-WEATHER/
 ├── vite.config.ts                # Konfigurasi bundling Vite & Vitest test runner
 ├── README.md                     # Dokumentasi resmi proyek
 ├── bontot_weather.tsx            # Salinan source aplikasi di root workspace
+├── public/
+│   ├── bontot-weather-logo.png   # Aset logo resmi resolusi tinggi BONTOT WEATHER
+│   └── favicon.png               # Aset favicon resmi BONTOT WEATHER
 ├── docs/
 │   └── SOURCE_BASELINE.md        # Catatan audit & baseline source code Gemini
 ├── source/
-│   └── bontot_weather.tsx        # Source aplikasi lengkap (menggantikan placeholder lama)
+│   └── bontot_weather.tsx        # Source aplikasi lengkap tersinkronisasi
 ├── src/
 │   ├── App.tsx                   # Implementasi lengkap seluruh fitur, state, & diagnostik BONTOT WEATHER
-│   ├── index.css                 # Base Tailwind styles & efek glassmorphism
+│   ├── index.css                 # Base styles, animasi atmosfer dinamis & glassmorphism
 │   └── main.tsx                  # Mount React 18 ke DOM
 └── tests/
-    └── bontot_weather_qa.test.ts # 15 test skenario nyata yang menguji fungsi inti src/App.tsx
+    └── bontot_weather_qa.test.ts # 18 test skenario nyata yang menguji fungsi inti src/App.tsx
 ```
 
 ---
