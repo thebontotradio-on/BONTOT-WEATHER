@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BONTOT WEATHER</string>
+    <string name="title_activity_main">BONTOT WEATHER</string>
+    <string name="package_name">com.thebontotradio.weather</string>
+    <string name="custom_url_scheme">com.thebontotradio.weather</string>
+    <string name="widget_small_description">Widget ringkas menampilkan suhu dan kondisi cuaca terkini.</string>
+    <string name="widget_medium_description">Widget informatif dengan suhu, kondisi cuaca, kualitas udara (AQI), dan waktu pembaruan.</string>
+</resources>

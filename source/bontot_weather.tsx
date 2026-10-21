@@ -55,6 +55,7 @@ import {
   Tooltip,
   Legend
 } from 'recharts';
+import { Preferences } from '@capacitor/preferences';
 
 // ============================================================================
 // 1. KONFIGURASI, KONSTANTA & ENDPOINT RESMI API
@@ -144,6 +145,23 @@ export const PRESET_CITIES = [
     timezone: 'Asia/Tokyo'
   }
 ];
+
+/**
+ * Menyinkronkan lokasi aktif pengguna ke storage native Android (SharedPreferences via Preferences).
+ * Digunakan langsung oleh Android AppWidget untuk memuat cuaca lokasi pilihan pengguna.
+ */
+export async function syncLocationToNativeWidget(loc: any) {
+  try {
+    if (!loc) return;
+    const jsonStr = JSON.stringify(loc);
+    localStorage.setItem(STORAGE_KEYS.LAST_LOCATION, jsonStr);
+    try {
+      await Preferences.set({ key: 'bontot_selected_location', value: jsonStr });
+    } catch {
+      // Non-blocking di lingkungan browser murni / testing
+    }
+  } catch {}
+}
 
 // ============================================================================
 // 2. UTILITAS METEOROLOGI, VALIDASI DATA & FORMAT ANGKA
@@ -1777,7 +1795,7 @@ export default function App() {
           };
           const updatedCache = pruneAndSaveCache(parsedCache, coordKey, entryPayload, CACHE_MAX_ENTRIES);
           localStorage.setItem(STORAGE_KEYS.WEATHER_CACHE, JSON.stringify(updatedCache));
-          localStorage.setItem(STORAGE_KEYS.LAST_LOCATION, JSON.stringify(loc));
+          syncLocationToNativeWidget(loc);
         } catch {}
       } catch (err: any) {
         if (err.name === 'AbortError') return;

@@ -20,11 +20,13 @@ import {
   searchLocationsGeocoding,
   reverseGeocodeCoordinates,
   getAtmosphericEffect,
+  syncLocationToNativeWidget,
   CACHE_MAX_ENTRIES,
   CACHE_STALE_THRESHOLD_MS,
   COORD_MATCH_TOLERANCE,
   DEFAULT_LOCATION,
-  PRESET_CITIES
+  PRESET_CITIES,
+  STORAGE_KEYS
 } from '../src/App';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -523,5 +525,77 @@ describe('BONTOT WEATHER — QA Verification Suite (15 Skenario Nyata)', () => {
     // Pastikan src/App.tsx menggunakan logo resmi lokal
     const appTsx = fs.readFileSync(appTsxPath, 'utf-8');
     expect(appTsx).toContain('src="/bontot-weather-logo.png"');
+  });
+
+  // 19. Sinkronisasi lokasi terpilih pengguna ke storage native Android (Capacitor Preferences / SharedPreferences)
+  it('19. syncLocationToNativeWidget menyimpan lokasi aktif secara persisten dan null-safe', async () => {
+    const testLocation = {
+      id: 'surabaya-id',
+      name: 'Surabaya',
+      admin1: 'Jawa Timur',
+      country: 'Indonesia',
+      latitude: -7.2575,
+      longitude: 112.7521,
+      timezone: 'Asia/Jakarta'
+    };
+
+    // Eksekusi fungsi sinkronisasi
+    await syncLocationToNativeWidget(testLocation);
+
+    // Verifikasi tersimpan di localStorage sebagai fallback persisten
+    const saved = localStorage.getItem(STORAGE_KEYS.LAST_LOCATION);
+    expect(saved).not.toBeNull();
+    const parsed = JSON.parse(saved!);
+    expect(parsed.name).toBe('Surabaya');
+    expect(parsed.latitude).toBe(-7.2575);
+
+    // Pengujian null-safety: jika loc null, tidak melempar exception
+    await expect(syncLocationToNativeWidget(null)).resolves.not.toThrow();
+  });
+
+  // 20. Verifikasi integritas arsitektur Android Native AppWidget (Small & Medium)
+  it('20. Struktur native Android AppWidget (Manifest, Layouts, Providers, Drawables) lengkap dan valid', () => {
+    const manifestPath = path.resolve(process.cwd(), 'android/app/src/main/AndroidManifest.xml');
+    const smallLayoutPath = path.resolve(process.cwd(), 'android/app/src/main/res/layout/widget_bontot_small.xml');
+    const mediumLayoutPath = path.resolve(process.cwd(), 'android/app/src/main/res/layout/widget_bontot_medium.xml');
+    const smallXmlInfo = path.resolve(process.cwd(), 'android/app/src/main/res/xml/bontot_widget_small_info.xml');
+    const mediumXmlInfo = path.resolve(process.cwd(), 'android/app/src/main/res/xml/bontot_widget_medium_info.xml');
+    const modelKtPath = path.resolve(process.cwd(), 'android/app/src/main/java/com/thebontotradio/weather/BontotWeatherModel.kt');
+    const serviceKtPath = path.resolve(process.cwd(), 'android/app/src/main/java/com/thebontotradio/weather/BontotWeatherService.kt');
+    const smallProviderPath = path.resolve(process.cwd(), 'android/app/src/main/java/com/thebontotradio/weather/BontotSmallWidgetProvider.kt');
+    const mediumProviderPath = path.resolve(process.cwd(), 'android/app/src/main/java/com/thebontotradio/weather/BontotMediumWidgetProvider.kt');
+    const logoDrawablePath = path.resolve(process.cwd(), 'android/app/src/main/res/drawable/ic_bontot_logo.png');
+    const emblemDrawablePath = path.resolve(process.cwd(), 'android/app/src/main/res/drawable/ic_bontot_emblem.png');
+
+    // Pastikan seluruh file komponen widget ada
+    expect(fs.existsSync(manifestPath)).toBe(true);
+    expect(fs.existsSync(smallLayoutPath)).toBe(true);
+    expect(fs.existsSync(mediumLayoutPath)).toBe(true);
+    expect(fs.existsSync(smallXmlInfo)).toBe(true);
+    expect(fs.existsSync(mediumXmlInfo)).toBe(true);
+    expect(fs.existsSync(modelKtPath)).toBe(true);
+    expect(fs.existsSync(serviceKtPath)).toBe(true);
+    expect(fs.existsSync(smallProviderPath)).toBe(true);
+    expect(fs.existsSync(mediumProviderPath)).toBe(true);
+    expect(fs.existsSync(logoDrawablePath)).toBe(true);
+    expect(fs.existsSync(emblemDrawablePath)).toBe(true);
+
+    // Pastikan AndroidManifest.xml mendaftarkan kedua receiver widget
+    const manifestContent = fs.readFileSync(manifestPath, 'utf-8');
+    expect(manifestContent).toContain('BontotSmallWidgetProvider');
+    expect(manifestContent).toContain('BontotMediumWidgetProvider');
+    expect(manifestContent).toContain('android.appwidget.action.APPWIDGET_UPDATE');
+    expect(manifestContent).toContain('android.permission.INTERNET');
+
+    // Pastikan layout XML mereferensikan elemen ID yang benar
+    const smallLayout = fs.readFileSync(smallLayoutPath, 'utf-8');
+    expect(smallLayout).toContain('tv_widget_temp');
+    expect(smallLayout).toContain('btn_widget_refresh');
+
+    const mediumLayout = fs.readFileSync(mediumLayoutPath, 'utf-8');
+    expect(mediumLayout).toContain('tv_widget_temp');
+    expect(mediumLayout).toContain('tv_widget_feels_like');
+    expect(mediumLayout).toContain('tv_widget_aqi');
+    expect(mediumLayout).toContain('btn_widget_refresh');
   });
 });

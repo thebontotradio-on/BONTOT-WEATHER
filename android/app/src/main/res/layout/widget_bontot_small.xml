@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_small_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="12dp"
+    android:background="@drawable/widget_background_dark">
+
+    <!-- Top Bar: Logo & Location -->
+    <LinearLayout
+        android:id="@+id/layout_top"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_alignParentTop="true">
+
+        <ImageView
+            android:id="@+id/iv_widget_logo"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:src="@drawable/ic_bontot_emblem"
+            android:contentDescription="BONTOT WEATHER Logo" />
+
+        <TextView
+            android:id="@+id/tv_widget_location"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:text="Jakarta"
+            android:textColor="#94A3B8"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <ImageView
+            android:id="@+id/btn_widget_refresh"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:padding="3dp"
+            android:background="@drawable/widget_refresh_button_bg"
+            android:src="@drawable/ic_refresh"
+            android:contentDescription="Refresh Weather" />
+    </LinearLayout>
+
+    <!-- Center: Temperature -->
+    <TextView
+        android:id="@+id/tv_widget_temp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:text="--°"
+        android:textColor="#FFFFFF"
+        android:textSize="36sp"
+        android:textStyle="bold"
+        android:fontFamily="sans-serif-black" />
+
+    <!-- Bottom: Condition Pill Badge -->
+    <TextView
+        android:id="@+id/tv_widget_condition"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:gravity="center"
+        android:background="@drawable/widget_badge_bg"
+        android:paddingVertical="3dp"
+        android:paddingHorizontal="6dp"
+        android:text="Memuat Cuaca..."
+        android:textColor="#00F5D4"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+</RelativeLayout>

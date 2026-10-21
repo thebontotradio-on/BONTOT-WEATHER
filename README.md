@@ -2,7 +2,22 @@
 
 **Know the Sky. Own Your Day.**
 
-Aplikasi pemantauan cuaca dan kualitas udara hiper-lokal, modern, dan andal berbasis React, TypeScript, Tailwind CSS, Vite, Lucide Icons, dan Recharts. Terintegrasi langsung dengan layanan API Open-Meteo untuk prakiraan cuaca, kualitas udara (AQI), dan geocoding.
+Aplikasi pemantauan cuaca dan kualitas udara hiper-lokal, modern, dan andal berbasis React, TypeScript, Tailwind CSS, Vite, Lucide Icons, dan Recharts. Terintegrasi langsung dengan layanan API Open-Meteo untuk prakiraan cuaca, kualitas udara (AQI), dan geocoding, serta dilengkapi **Native Android Home Screen Widget** (Small & Medium).
+
+---
+
+## Fitur Utama
+
+- **Live Weather Metrics:** Suhu aktual, suhu terasa (*apparent temperature*), kelembapan relatif, kecepatan & arah angin, tekanan udara permukaan, jarak pandang (*visibility*), indeks UV, titik embun, dan estimasi curah hujan.
+- **Prakiraan Per Jam (24 Jam) & 7 Hari:** Dilengkapi visualisasi grafik interaktif Recharts untuk tren suhu, peluang presipitasi, dan kecepatan angin.
+- **Air Quality Index (AQI):** Menampilkan US AQI, konsentrasi PM2.5, PM10, Karbon Monoksida (CO), Nitrogen Dioksida (NO2), dan Ozon (O3) dengan indikator kesehatan.
+- **Rekomendasi Aktivitas Cerdas & Deterministik:** Rekomendasi mandiri untuk membawa payung, aktivitas luar ruangan, proteksi radiasi UV, kenyamanan termal, dan berkendara, dengan evaluasi *null-safe* independen.
+- **Pencarian Lokasi & GPS:** Pencarian kota geocoding cerdas dengan pencegahan *race condition* (`AbortController`), reverse geocoding untuk deteksi lokasi GPS saat ini, dan preset kota-kota utama Indonesia & dunia.
+- **Sistem Cache Cerdas (FIFO/LRU):**
+  - Batas maksimal 10 entri cache.
+  - Kedaluwarsa otomatis setelah 2 jam (*stale threshold* 7.200.000 ms) atau bila timestamp tidak valid.
+  - Pencocokan koordinat geografis berbasis toleransi presisi $\pm 0.01^\circ$ (~1,1 km) untuk mencegah cache salah lokasi.
+- **In-App QA Diagnostic Suite:** Panel diagnostik interaktif terintegrasi yang menjalankan pengujian skenario nyata secara langsung di peramban.
 
 ---
 
@@ -29,29 +44,26 @@ Aplikasi menyajikan atmosfer latar belakang (`AtmosphericBackground`) yang hidup
 9. **Salju (`snow`):** Butiran kristal salju melayang turun dengan ayunan sinusoidal dan rotasi halus (`anim-snow`).
 10. **Kondisi Tidak Diketahui (`unknown` / `null`):** Tampilan gradasi kosmik netral tanpa menciptakan efek cuaca palsu.
 
-### Aksesibilitas & Efisiensi Performa:
-- **`prefers-reduced-motion`:** Menghormati pengaturan aksesibilitas sistem pengguna. Bila diaktifkan, seluruh animasi dihentikan dan beralih ke gradasi statis.
-- **Optimasi Tab Tidak Aktif:** Menggunakan event listener `document.visibilitychange` untuk menghentikan (`animation-play-state: paused`) proses render saat peramban berada di tab latar belakang, menghemat daya baterai dan siklus GPU.
-- **GPU-Accelerated:** Seluruh animasi dibangun menggunakan CSS 3D transforms (`translate3d`) dan `opacity` tanpa memicu layout reflow.
+---
+
+## Android Home Screen Widget (Native Kotlin)
+
+Aplikasi BONTOT WEATHER dilengkapi implementasi **Android AppWidget Native** resmi yang dapat dipasang langsung pada home screen perangkat Android:
+
+### 1. Varian Ukuran Widget
+- **Small Widget (2x2 cells, ~110dp x 110dp):** Menampilkan emblem logo resmi BONTOT WEATHER, nama lokasi aktif, suhu aktual berukuran besar, status kondisi cuaca dalam bentuk pill badge cyan, dan tombol refresh instan.
+- **Medium Widget (4x2 cells, ~250dp x 110dp):** Menampilkan logo resmi + judul aplikasi, lokasi aktif, suhu aktual, indikator kenyamanan termal (*Suhu Terasa*), status cuaca WMO, kualitas udara (AQI), waktu pembaruan terakhir, dan tombol manual refresh.
+
+### 2. Fitur & Ketahanan Widget
+- **Sinkronisasi Otomatis:** Saat pengguna memilih kota di aplikasi web, data lokasi langsung disinkronkan ke native storage (`@capacitor/preferences` / `SharedPreferences`) via `syncLocationToNativeWidget`.
+- **Fetch Langsung Open-Meteo:** Widget mengambil data cuaca secara langsung dari endpoint Open-Meteo di latar belakang menggunakan `HttpURLConnection` dan coroutine Kotlin (`Dispatchers.IO`).
+- **Offline Cache Resilience:** Jika perangkat dalam mode pesawat atau koneksi terputus, widget secara otomatis membaca cache data terakhir dan menampilkan label *(Offline)* tanpa crash.
+- **Interaksi Ketukan (Deep Link):** Mengetuk area kartu widget akan meluncurkan `MainActivity` untuk membuka tampilan detail cuaca lokasi tersebut.
+- **Manual Refresh On-Demand:** Tombol putar di pojok widget memungkinkan pembaruan cuaca seketika melalui broadcast `PendingIntent`.
 
 ---
 
-## Fitur Utama
-
-- **Live Weather Metrics:** Suhu aktual, suhu terasa (*apparent temperature*), kelembapan relatif, kecepatan & arah angin, tekanan udara permukaan, jarak pandang (*visibility*), indeks UV, titik embun, dan estimasi curah hujan.
-- **Prakiraan Per Jam (24 Jam) & 7 Hari:** Dilengkapi visualisasi grafik interaktif Recharts untuk tren suhu, peluang presipitasi, dan kecepatan angin.
-- **Air Quality Index (AQI):** Menampilkan US AQI, konsentrasi PM2.5, PM10, Karbon Monoksida (CO), Nitrogen Dioksida (NO2), dan Ozon (O3) dengan indikator kesehatan.
-- **Rekomendasi Aktivitas Cerdas & Deterministik:** Rekomendasi mandiri untuk membawa payung, aktivitas luar ruangan, proteksi radiasi UV, kenyamanan termal, dan berkendara, dengan evaluasi *null-safe* independen.
-- **Pencarian Lokasi & GPS:** Pencarian kota geocoding cerdas dengan pencegahan *race condition* (`AbortController`), reverse geocoding untuk deteksi lokasi GPS saat ini, dan preset kota-kota utama Indonesia & dunia.
-- **Sistem Cache Cerdas (FIFO/LRU):**
-  - Batas maksimal 10 entri cache.
-  - Kedaluwarsa otomatis setelah 2 jam (*stale threshold* 7.200.000 ms) atau bila timestamp tidak valid.
-  - Pencocokan koordinat geografis berbasis toleransi presisi $\pm 0.01^\circ$ (~1,1 km) untuk mencegah cache salah lokasi.
-- **In-App QA Diagnostic Suite:** Panel diagnostik interaktif terintegrasi yang menjalankan pengujian skenario nyata secara langsung di peramban.
-
----
-
-## 18 Skenario Pengujian QA Terverifikasi
+## 20 Skenario Pengujian QA Terverifikasi
 
 1. **Integritas Data Hujan:** Nilai peluang hujan yang hilang (`null`) tidak pernah dipalsukan menjadi `0%`.
 2. **Indeks UV Independen:** Data UV yang hilang tidak diasumsikan "Aman".
@@ -71,51 +83,42 @@ Aplikasi menyajikan atmosfer latar belakang (`AtmosphericBackground`) yang hidup
 16. **Pemetaan Efek Atmosfer Dinamis:** Pengujian presisi pemetaan animasi visual cuaca cerah, malam, berawan, gerimis, hujan, badai petir, kabut, dan salju.
 17. **Netralitas Kondisi Unknown & Null:** Memastikan data cuaca kosong/unknown tidak memicu efek visual palsu.
 18. **Validitas Logo Resmi & Favicon:** Memastikan file gambar logo resmi lokal berukuran penuh, header PNG valid, dan favicon terpasang.
+19. **Sinkronisasi Lokasi ke Native Widget:** Memastikan `syncLocationToNativeWidget` menyimpan lokasi aktif ke storage native secara persisten dan null-safe.
+20. **Integritas Native Android AppWidget:** Memastikan manifest, layout XML Small & Medium, metadata provider, kode Kotlin, dan aset logo drawable terpasang lengkap dan valid.
 
 ---
 
-## Persyaratan Sistem
+## Panduan Menjalankan & Membangun Proyek
 
-- **Node.js:** Versi 18.0.0 atau lebih baru (disarankan LTS Node 20+)
-- **NPM:** Versi 9.0.0 atau lebih baru
-
----
-
-## Panduan Instalasi & Menjalankan Proyek
-
-### 1. Kloning Repository
+### 1. Web Application
 ```bash
-git clone https://github.com/thebontotradio-on/BONTOT-WEATHER.git
-cd BONTOT-WEATHER
-```
-
-### 2. Memasang Dependensi
-```bash
+# Pasang dependensi
 npm install
-```
 
-### 3. Menjalankan Server Pengembangan (Dev)
-```bash
+# Development server
 npm run dev
-```
-Aplikasi akan aktif di `http://localhost:5173`.
 
-### 4. Menjalankan Pengujian Otomatis (QA Test Suite)
-```bash
+# Jalankan 20 skenario QA test suite
 npm test
-```
-Menjalankan 18 skenario pengujian integrasi berbasis Vitest.
 
-### 5. Membangun Bundle Produksi
-```bash
+# Build bundle produksi
 npm run build
 ```
-Hasil build produksi yang dioptimalkan akan tersedia di folder `dist/`.
 
-### 6. Menjalankan Pratinjau Produksi
+### 2. Android Studio & APK Build
 ```bash
-npm run preview
+# Sinkronkan aset web ke project Android
+npx cap sync android
+
+# Buka project di Android Studio
+npx cap open android
 ```
+Atau jika Android SDK telah terpasang pada environment Anda:
+```bash
+cd android
+./gradlew assembleDebug
+```
+Output APK akan dibuat di `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 ---
 
@@ -123,7 +126,8 @@ npm run preview
 
 ```
 BONTOT-WEATHER/
-├── .gitignore                    # Aturan pengabaian file Git (node_modules, dist, .env, dll)
+├── .gitignore                    # Aturan pengabaian file Git
+├── capacitor.config.ts           # Konfigurasi container Capacitor Android
 ├── index.html                    # Entry point HTML aplikasi dengan font & favicon resmi
 ├── package.json                  # Metadata dependensi & script proyek
 ├── package-lock.json             # Kunci dependensi versi terkunci
@@ -144,8 +148,29 @@ BONTOT-WEATHER/
 │   ├── App.tsx                   # Implementasi lengkap seluruh fitur, state, & diagnostik BONTOT WEATHER
 │   ├── index.css                 # Base styles, animasi atmosfer dinamis & glassmorphism
 │   └── main.tsx                  # Mount React 18 ke DOM
-└── tests/
-    └── bontot_weather_qa.test.ts # 18 test skenario nyata yang menguji fungsi inti src/App.tsx
+├── tests/
+│   └── bontot_weather_qa.test.ts # 20 test skenario nyata yang menguji fungsi inti src/App.tsx
+└── android/                      # Native Android Project (Capacitor Container)
+    ├── app/
+    │   ├── src/main/
+    │   │   ├── AndroidManifest.xml # Registrasi widget receiver Small & Medium
+    │   │   ├── java/com/thebontotradio/weather/
+    │   │   │   ├── MainActivity.java
+    │   │   │   ├── BontotWeatherModel.kt       # Model data & WMO mapper
+    │   │   │   ├── BontotWeatherService.kt     # Open-Meteo background fetch & cache
+    │   │   │   ├── BontotSmallWidgetProvider.kt # Small widget (2x2) provider
+    │   │   │   └── BontotMediumWidgetProvider.kt # Medium widget (4x2) provider
+    │   │   └── res/
+    │   │       ├── layout/
+    │   │       │   ├── widget_bontot_small.xml  # Layout XML Small widget
+    │   │       │   └── widget_bontot_medium.xml # Layout XML Medium widget
+    │   │       ├── xml/
+    │   │       │   ├── bontot_widget_small_info.xml
+    │   │       │   └── bontot_widget_medium_info.xml
+    │   │       └── drawable/                    # Background, badge, dan logo resmi
+    │   └── build.gradle                         # Konfigurasi Kotlin & dependensi
+    ├── build.gradle
+    └── gradlew / gradlew.bat
 ```
 
 ---
