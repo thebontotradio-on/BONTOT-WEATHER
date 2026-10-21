@@ -40,3 +40,7 @@ Thumbs.db
 
 # TypeScript cache
 *.tsbuildinfo
+
+# Android binaries
+*.apk
+
