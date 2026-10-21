@@ -1841,6 +1841,7 @@ export default function App() {
   );
 
   useEffect(() => {
+    syncLocationToNativeWidget(selectedLocation);
     loadWeatherForLocation(selectedLocation, { forceRefresh: true });
   }, [selectedLocation.latitude, selectedLocation.longitude, selectedLocation.name, loadWeatherForLocation]);
 
